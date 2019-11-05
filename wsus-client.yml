@@ -106,9 +106,9 @@
         state: absent
       when: wsus_auoptions != 4 or wsus_auoptions is undefined
       
-    #- name: Register with WSUS Server (First Time or Changed)
-    #  win_command: wuauclt /resetauthorization
-    #  when: wuserver_updated.data_changed
+    - name: Register with WSUS Server (First Time or Changed)
+      win_command: wuauclt /resetauthorization
+      when: wuserver_updated.data_changed
     
     - name: Register with WSUS Server
       win_command: wuauclt /detectnow /reportnow
