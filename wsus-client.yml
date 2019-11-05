@@ -1,0 +1,115 @@
+---
+- name: Update WSUS Client Settings
+  hosts: all
+  gather_facts: false
+  tasks:
+  
+  # Vars
+  # see set_fact task below - set wsus_server
+  # below can be a var in inventory or whereever.
+  # wsus_noautoupdate (0 or 1 - 1 Disable Auto Update, 0 Enable Auto Update. Defaults to 1)
+  # wsus_download_options (2, 3, or 4, defaults to 2 if not specified. 2 = Notify before download. 3 = Automatically download and notify of installation. 4 = Automatically download and schedule installation. Only valid if values exist for ScheduledInstallDay and ScheduledInstallTime. 5 = Automatic Updates is required and users can configure it.
+  # wsus_scheduledinstalltime (Only works with wsus_download_options is 4 and must be set if so. Represents day of week 0 being monday 7 being sunday.)
+  # wsus_scheduledinstallday (Only works with wsus_download_options is 4 and must be set if so. Represents hour of day 0 being midnight 23 being 11pm)
+  
+    - name: Set Registry Path
+      set_fact:
+        wsus_server: 'https://your-wsus-server.internal.domain:8531'
+        wu_reg_path: 'HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate'
+        au_reg_path: 'HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate\AU'
+
+  
+    - name: Update WSUS Client TargetGroup
+      win_regedit:
+        path: "{{ wu_reg_path }}"
+        name: 'TargetGroupEnabled'
+        data: 1
+        type: dword
+        
+    - name: Update WSUS Client TargetGroup
+      win_regedit:
+        path: "{{ wu_reg_path }}"
+        name: 'TargetGroup'
+        data: "{{ wsus_group }}"
+        type: string
+        
+    - name: Update WSUS Client WUServer
+      win_regedit:
+        path: "{{ wu_reg_path }}"
+        name: 'WUServer'
+        data: "{{ wsus_server }}"
+        type: string
+      register: wuserver_updated
+
+    - name: Update WSUS Client WUStatusServer
+      win_regedit:
+        path: "{{ wu_reg_path }}"
+        name: 'WUStatusServer'
+        data: "{{ wsus_server }}"
+        type: string
+        
+    - name: Update UseWUServer Registry Key
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'UseWUServer'
+        data: 1
+        type: dword
+        state: present
+
+    - name: Update NoAutoUpdate Registry Key
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'NoAutoUpdate'
+        data: "{{ wsus_noautoupdate | default('1') }}" # 1 Disable, 0 Enable
+        type: dword
+        state: present
+
+    - name: Update AUOptions Registry Key
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'AUOptions'
+        data: "{{ wsus_download_options | default('2') }}" # 2 = Notify before download. 3 = Automatically download and notify of installation. 4 = Automatically download and schedule installation. Only valid if values exist for ScheduledInstallDay and ScheduledInstallTime. 5 = Automatic Updates is required and users can configure it.
+        type: dword
+        state: present
+ 
+    - name: Update Scheduled Day Registry Key
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'ScheduledInstallDay'
+        data: "{{ wsus_scheduledinstallday }}"
+        state: present
+      when: wsus_auoptions is defined and wsus_auoptions == 4
+       
+    - name: Update Scheduled Time Registry Key
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'ScheduledInstallTime'
+        data: "{{ wsus_scheduledinstalltime }}"
+        state: present
+      when: wsus_auoptions is defined and wsus_auoptions == 4
+      
+    - name: Scan For Updates (If Option UsoClient startscan 4 is set)
+      win_command: UsoClient startscan # for windows 10, otherwise wuauclt /detectnow - need to work that logic in.
+      when: wsus_auoptions is defined and wsus_auoptions == 4
+       
+    - name: Remove Scheduled Day Registry Keys
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'ScheduledInstallDay'
+        state: absent
+      when: wsus_auoptions != 4 or wsus_auoptions is undefined
+      
+    - name: Remove Scheduled Time Registry Keys
+      win_regedit:
+        path: "{{ au_reg_path }}"
+        name: 'ScheduledInstallTime'
+        state: absent
+      when: wsus_auoptions != 4 or wsus_auoptions is undefined
+      
+    #- name: Register with WSUS Server (First Time or Changed)
+    #  win_command: wuauclt /resetauthorization
+    #  when: wuserver_updated.data_changed
+    
+    - name: Register with WSUS Server
+      win_command: wuauclt /detectnow /reportnow
+
