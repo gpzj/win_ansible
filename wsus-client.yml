@@ -8,8 +8,8 @@
   # see set_fact task below - set wsus_server
   # below can be a var in inventory or whereever.
   # wsus_noautoupdate (0 or 1 - 1 Disable Auto Update, 0 Enable Auto Update. Defaults to 1)
-  # wsus_download_options (2, 3, or 4, defaults to 2 if not specified. 2 = Notify before download. 3 = Automatically download and notify of installation. 4 = Automatically download and schedule installation. Only valid if values exist for ScheduledInstallDay and ScheduledInstallTime. 5 = Automatic Updates is required and users can configure it.
-  # wsus_scheduledinstalltime (Only works with wsus_download_options is 4 and must be set if so. Represents day of week 0 being monday 7 being sunday.)
+  # wsus_download_options (1, 2, 3, or 4, defaults to 1 if not specified. 2 = Notify before download. 3 = Automatically download and notify of installation. 4 = Automatically download and schedule installation. Only valid if values exist for ScheduledInstallDay and ScheduledInstallTime. 5 = Automatic Updates is required and users can configure it.
+  # wsus_scheduledinstalltime (Only works with wsus_download_options is 4 and must be set if so. Represents day of week 0 being everyday, 1 being monday, 7 being sunday.)
   # wsus_scheduledinstallday (Only works with wsus_download_options is 4 and must be set if so. Represents hour of day 0 being midnight 23 being 11pm)
   
     - name: Set Registry Path
@@ -68,7 +68,7 @@
       win_regedit:
         path: "{{ au_reg_path }}"
         name: 'AUOptions'
-        data: "{{ wsus_download_options | default('2') }}" # 2 = Notify before download. 3 = Automatically download and notify of installation. 4 = Automatically download and schedule installation. Only valid if values exist for ScheduledInstallDay and ScheduledInstallTime. 5 = Automatic Updates is required and users can configure it.
+        data: "{{ wsus_download_options | default('1') }}" # 2 = Notify before download. 3 = Automatically download and notify of installation. 4 = Automatically download and schedule installation. Only valid if values exist for ScheduledInstallDay and ScheduledInstallTime. 5 = Automatic Updates is required and users can configure it.
         type: dword
         state: present
  
